@@ -1,3 +1,9 @@
+pplug-volumepulse (1.7) trixie; urgency=medium
+
+  * Correct dependencies
+
+ -- Simon Long <simon@raspberrypi.com>  Tue, 27 Jan 2026 10:04:51 +0000
+
 pplug-volumepulse (1.6) trixie; urgency=medium
 
   * Prevent multiple calls to pa_update_disp_cb
