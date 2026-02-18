@@ -40,12 +40,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 typedef struct 
 {
-    GtkWidget *plugin[2];
+    GtkWidget *plugin;                     /* Box to hold both plugin widgets */
+    GtkWidget *button[2];
 
 #ifdef LXPLUG
     LXPanel *panel;                     /* Back pointer to panel */
     config_setting_t *settings;         /* Plugin settings */
-    GtkWidget *box;                     /* Box to hold both plugin widgets */
 #else
     GtkGesture *gesture[2];
 #endif

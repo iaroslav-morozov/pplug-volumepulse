@@ -189,7 +189,7 @@ static gboolean button_release (GtkWidget *, GdkEventButton *event, VolumePulseP
 
         case 3: /* right-click - show device list */
                 menu_show (vol, input);
-                wrap_show_menu (vol->plugin[input ? 1 : 0], vol->menu_devices[input ? 1 : 0]);
+                wrap_show_menu (vol->button[input ? 1 : 0], vol->menu_devices[input ? 1 : 0]);
                 break;
     }
 
@@ -223,7 +223,7 @@ static void vol_gesture_end (GtkGestureLongPress *, GdkEventSequence *, gpointer
     if (pressed == PRESS_LONG)
     {
         menu_show (vol, FALSE);
-        wrap_show_menu (vol->plugin[0], vol->menu_devices[0]);
+        wrap_show_menu (vol->button[0], vol->menu_devices[0]);
     }
 }
 
@@ -233,7 +233,7 @@ static void mic_gesture_end (GtkGestureLongPress *, GdkEventSequence *, gpointer
     if (pressed == PRESS_LONG)
     {
         menu_show (vol, TRUE);
-        wrap_show_menu (vol->plugin[1], vol->menu_devices[1]);
+        wrap_show_menu (vol->button[1], vol->menu_devices[1]);
     }
 }
 #endif
@@ -248,7 +248,7 @@ void volumepulse_update_display (VolumePulsePlugin *vol)
 /* Handler for control message */
 gboolean volumepulse_control_msg (VolumePulsePlugin *vol, const char *cmd)
 {
-    if (!gtk_widget_is_visible (vol->plugin[0])) return TRUE;
+    if (!gtk_widget_is_visible (vol->button[0])) return TRUE;
 
     if (!strncmp (cmd, "mute", 4))
     {
@@ -320,32 +320,38 @@ void volumepulse_init (VolumePulsePlugin *vol)
     else vol->wizard = FALSE;
 
     /* Allocate icon as a child of top level */
+    gtk_widget_show (vol->plugin);
+    vol->button[0] = gtk_button_new ();
+    gtk_box_pack_start (GTK_BOX (vol->plugin), vol->button[0], TRUE, TRUE, 0);
+    vol->button[1] = gtk_button_new ();
+    gtk_box_pack_start (GTK_BOX (vol->plugin), vol->button[1], TRUE, TRUE, 0);
+
     vol->tray_icon[0] = gtk_image_new ();
-    gtk_container_add (GTK_CONTAINER (vol->plugin[0]), vol->tray_icon[0]);
+    gtk_container_add (GTK_CONTAINER (vol->button[0]), vol->tray_icon[0]);
     vol->tray_icon[1] = gtk_image_new ();
-    gtk_container_add (GTK_CONTAINER (vol->plugin[1]), vol->tray_icon[1]);
+    gtk_container_add (GTK_CONTAINER (vol->button[1]), vol->tray_icon[1]);
 
     /* Set up button */
-    gtk_button_set_relief (GTK_BUTTON (vol->plugin[0]), GTK_RELIEF_NONE);
-    g_signal_connect (vol->plugin[0], "scroll-event", G_CALLBACK (volumepulse_mouse_scrolled), vol);
-    gtk_widget_add_events (vol->plugin[0], GDK_SCROLL_MASK);
+    gtk_button_set_relief (GTK_BUTTON (vol->button[0]), GTK_RELIEF_NONE);
+    g_signal_connect (vol->button[0], "scroll-event", G_CALLBACK (volumepulse_mouse_scrolled), vol);
+    gtk_widget_add_events (vol->button[0], GDK_SCROLL_MASK);
 
-    gtk_button_set_relief (GTK_BUTTON (vol->plugin[1]), GTK_RELIEF_NONE);
-    g_signal_connect (vol->plugin[1], "scroll-event", G_CALLBACK (micpulse_mouse_scrolled), vol);
-    gtk_widget_add_events (vol->plugin[1], GDK_SCROLL_MASK);
+    gtk_button_set_relief (GTK_BUTTON (vol->button[1]), GTK_RELIEF_NONE);
+    g_signal_connect (vol->button[1], "scroll-event", G_CALLBACK (micpulse_mouse_scrolled), vol);
+    gtk_widget_add_events (vol->button[1], GDK_SCROLL_MASK);
 
 #ifdef LXPLUG
-    g_signal_connect (vol->plugin[0], "button-press-event", G_CALLBACK (volumepulse_button_press_event), vol);
-    g_signal_connect (vol->plugin[1], "button-press-event", G_CALLBACK (micpulse_button_press_event), vol);
+    g_signal_connect (vol->button[0], "button-press-event", G_CALLBACK (volumepulse_button_press_event), vol);
+    g_signal_connect (vol->button[1], "button-press-event", G_CALLBACK (micpulse_button_press_event), vol);
 #else
-    g_signal_connect (vol->plugin[0], "button-press-event", G_CALLBACK (volmic_button_press), vol);
-    g_signal_connect (vol->plugin[1], "button-press-event", G_CALLBACK (volmic_button_press), vol);
+    g_signal_connect (vol->button[0], "button-press-event", G_CALLBACK (volmic_button_press), vol);
+    g_signal_connect (vol->button[1], "button-press-event", G_CALLBACK (volmic_button_press), vol);
 
-    g_signal_connect (vol->plugin[0], "button-release-event", G_CALLBACK (volumepulse_button_release), vol);
-    g_signal_connect (vol->plugin[1], "button-release-event", G_CALLBACK (micpulse_button_release), vol);
+    g_signal_connect (vol->button[0], "button-release-event", G_CALLBACK (volumepulse_button_release), vol);
+    g_signal_connect (vol->button[1], "button-release-event", G_CALLBACK (micpulse_button_release), vol);
 
-    vol->gesture[0] = add_long_press (vol->plugin[0], G_CALLBACK (vol_gesture_end), vol);
-    vol->gesture[1] = add_long_press (vol->plugin[1], G_CALLBACK (mic_gesture_end), vol);
+    vol->gesture[0] = add_long_press (vol->button[0], G_CALLBACK (vol_gesture_end), vol);
+    vol->gesture[1] = add_long_press (vol->button[1], G_CALLBACK (mic_gesture_end), vol);
 #endif
 
     /* Set up variables */
@@ -419,17 +425,12 @@ static GtkWidget *volumepulse_constructor (LXPanel *panel, config_setting_t *set
     /* Allocate top level widget and set into plugin widget pointer */
     vol->panel = panel;
     vol->settings = settings;
-    vol->box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-    vol->plugin[0] = gtk_button_new ();
-    gtk_box_pack_start (GTK_BOX (vol->box), vol->plugin[0], TRUE, TRUE, 0);
-    vol->plugin[1] = gtk_button_new ();
-    gtk_box_pack_start (GTK_BOX (vol->box), vol->plugin[1], TRUE, TRUE, 0);
-
-    lxpanel_plugin_set_data (vol->box, vol, volumepulse_destructor);
+    vol->plugin = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+    lxpanel_plugin_set_data (vol->plugin, vol, volumepulse_destructor);
 
     volumepulse_init (vol);
 
-    return vol->box;
+    return vol->plugin;
 }
 
 /* Handler for button press */

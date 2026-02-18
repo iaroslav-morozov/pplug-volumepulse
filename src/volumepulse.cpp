@@ -52,17 +52,12 @@ bool WayfireVolumepulse::set_icon (void)
 void WayfireVolumepulse::init (Gtk::HBox *container)
 {
     /* Create the button */
-    plugin_vol = std::make_unique <Gtk::Button> ();
-    plugin_vol->set_name (PLUGIN_NAME);
-    container->pack_start (*plugin_vol, false, false);
-    plugin_mic = std::make_unique <Gtk::Button> ();
-    plugin_mic->set_name (PLUGIN_NAME);
-    container->pack_start (*plugin_mic, false, false);
+    plugin = std::make_unique <Gtk::HBox> ();
+    container->pack_start (*plugin, false, false);
 
     /* Setup structure */
     vol = g_new0 (VolumePulsePlugin, 1);
-    vol->plugin[0] = (GtkWidget *)((*plugin_vol).gobj());
-    vol->plugin[1] = (GtkWidget *)((*plugin_mic).gobj());
+    vol->plugin = (GtkWidget *)((*plugin).gobj());
     icon_timer = Glib::signal_idle().connect (sigc::mem_fun (*this, &WayfireVolumepulse::set_icon));
 
     /* Initialise the plugin */

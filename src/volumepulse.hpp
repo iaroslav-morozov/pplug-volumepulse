@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define WIDGETS_VOLUMEPULSE_HPP
 
 #include <widget.hpp>
-#include <gtkmm/button.h>
+#include <gtkmm/box.h>
 
 extern "C" {
 #include "lxutils.h"
@@ -38,8 +38,7 @@ extern "C" {
 
 class WayfireVolumepulse : public WayfireWidget
 {
-    std::unique_ptr <Gtk::Button> plugin_vol;
-    std::unique_ptr <Gtk::Button> plugin_mic;
+    std::unique_ptr <Gtk::HBox> plugin;
 
     sigc::connection icon_timer;
 

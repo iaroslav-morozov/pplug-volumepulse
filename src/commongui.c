@@ -155,13 +155,13 @@ void update_display (VolumePulsePlugin *vol, gboolean input)
     pulse_count_devices (vol, input);
     if ((!input || !vol->wizard) && vol->pa_devices + bluetooth_count_devices (vol, input) > 0)
     {
-        gtk_widget_show_all (vol->plugin[input ? 1 : 0]);
-        gtk_widget_set_sensitive (vol->plugin[input ? 1 : 0], TRUE);
+        gtk_widget_show_all (vol->button[input ? 1 : 0]);
+        gtk_widget_set_sensitive (vol->button[input ? 1 : 0], TRUE);
     }
     else
     {
-        gtk_widget_hide (vol->plugin[input ? 1 : 0]);
-        gtk_widget_set_sensitive (vol->plugin[input ? 1 : 0], FALSE);
+        gtk_widget_hide (vol->button[input ? 1 : 0]);
+        gtk_widget_set_sensitive (vol->button[input ? 1 : 0], FALSE);
     }
 
     /* read current mute and volume status */
@@ -204,7 +204,7 @@ void update_display (VolumePulsePlugin *vol, gboolean input)
 
     /* update tooltip */
     char *tooltip = g_strdup_printf ("%s %d", input ? _("Mic volume") : _("Volume control"), level);
-    if (!vol->wizard) gtk_widget_set_tooltip_text (vol->plugin[input ? 1 : 0], tooltip);
+    if (!vol->wizard) gtk_widget_set_tooltip_text (vol->button[input ? 1 : 0], tooltip);
     g_free (tooltip);
 }
 
@@ -303,7 +303,7 @@ void popup_window_show (VolumePulsePlugin *vol, gboolean input_control)
     g_signal_connect (vol->popup_window[index], "destroy", G_CALLBACK (vol_destroyed), vol);
 
     /* Realise the window */
-    wrap_popup_at_button (vol, vol->popup_window[index], vol->plugin[index]);
+    wrap_popup_at_button (vol, vol->popup_window[index], vol->button[index]);
 }
 
 static gboolean hide_popup (VolumePulsePlugin *vol)
