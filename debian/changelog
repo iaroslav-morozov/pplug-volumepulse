@@ -1,3 +1,10 @@
+pplug-volumepulse (1.8) trixie; urgency=medium
+
+  * Use toplevel box on both wfpanel and lxpanel; rebuild against latest
+    APIs
+
+ -- Simon Long <simon@raspberrypi.com>  Fri, 20 Feb 2026 10:05:36 +0000
+
 pplug-volumepulse (1.7) trixie; urgency=medium
 
   * Correct dependencies
