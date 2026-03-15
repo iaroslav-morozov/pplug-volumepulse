@@ -176,8 +176,10 @@ static gboolean button_release (GtkWidget *, GdkEventButton *event, VolumePulseP
     switch (event->button)
     {
         case 1: /* left-click - show volume popup */
+#ifdef LXPLUG
+                popup_window_show (vol, input);
+#else
                 if (!vol->popup_shown) popup_window_show (vol, input);
-#ifndef LXPLUG
                 else close_popup ();
 #endif
                 update_display (vol, input);
@@ -436,16 +438,24 @@ static GtkWidget *volumepulse_constructor (LXPanel *panel, config_setting_t *set
 /* Handler for button press */
 static gboolean volumepulse_button_press_event (GtkWidget *widget, GdkEventButton *event, VolumePulsePlugin *vol)
 {
-    close_widget (&vol->popup_window[0]);
     close_widget (&vol->popup_window[1]);
-    return button_release (widget, event, vol, FALSE);
+    if (vol->popup_window[0])
+    {
+        close_widget (&vol->popup_window[0]);
+        return TRUE;
+    }
+    else return button_release (widget, event, vol, FALSE);
 }
 
 static gboolean micpulse_button_press_event (GtkWidget *widget, GdkEventButton *event, VolumePulsePlugin *vol)
 {
     close_widget (&vol->popup_window[0]);
-    close_widget (&vol->popup_window[1]);
-    return button_release (widget, event, vol, TRUE);
+    if (vol->popup_window[1])
+    {
+        close_widget (&vol->popup_window[1]);
+        return TRUE;
+    }
+    else return button_release (widget, event, vol, TRUE);
 }
 
 /* Handler for system config changed message from panel */

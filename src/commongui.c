@@ -55,6 +55,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 static void mouse_scrolled (GtkScale *, GdkEventScroll *evt, VolumePulsePlugin *vol, gboolean input);
 static void vol_destroyed (GtkWidget *widget, gpointer data);
+static gboolean popup_window_keypress_vol (GtkWidget *, GdkEventKey *event, VolumePulsePlugin *vol);
+static gboolean popup_window_keypress_mic (GtkWidget *, GdkEventKey *event, VolumePulsePlugin *vol);
+static void volume_key (VolumePulsePlugin *vol, gboolean input, gboolean up);
 static void popup_window_scale_changed_vol (GtkRange *range, VolumePulsePlugin *vol);
 static void popup_window_mute_toggled_vol (GtkWidget *widget, VolumePulsePlugin *vol);
 static void popup_window_scale_changed_mic (GtkRange *range, VolumePulsePlugin *vol);
@@ -289,17 +292,18 @@ void popup_window_show (VolumePulsePlugin *vol, gboolean input_control)
     gtk_scale_set_draw_value (GTK_SCALE (vol->popup_volume_scale[index]), FALSE);
     gtk_range_set_inverted (GTK_RANGE (vol->popup_volume_scale[index]), TRUE);
     gtk_box_pack_start (GTK_BOX (box), vol->popup_volume_scale[index], TRUE, TRUE, 0);
-    gtk_widget_set_can_focus (vol->popup_volume_scale[index], FALSE);
 
     /* Value-changed and scroll-event signals. */
     vol->volume_scale_handler[index] = g_signal_connect (vol->popup_volume_scale[index], "value-changed", input_control ? G_CALLBACK (popup_window_scale_changed_mic) : G_CALLBACK (popup_window_scale_changed_vol), vol);
     g_signal_connect (vol->popup_volume_scale[index], "scroll-event", input_control ? G_CALLBACK (micpulse_mouse_scrolled) : G_CALLBACK (volumepulse_mouse_scrolled), vol);
+    g_signal_connect (vol->popup_volume_scale[index], "key-press-event", input_control ? G_CALLBACK (popup_window_keypress_mic) : G_CALLBACK (popup_window_keypress_vol), vol);
 
     /* Create a check button as the child of the vertical box. */
     vol->popup_mute_check[index] = gtk_check_button_new_with_label (_("Mute"));
     gtk_box_pack_end (GTK_BOX (box), vol->popup_mute_check[index], FALSE, FALSE, 0);
     vol->mute_check_handler[index] = g_signal_connect (vol->popup_mute_check[index], "toggled", input_control ? G_CALLBACK (popup_window_mute_toggled_mic) : G_CALLBACK (popup_window_mute_toggled_vol), vol);
-    gtk_widget_set_can_focus (vol->popup_mute_check[index], FALSE);
+    g_signal_connect (vol->popup_mute_check[index], "key-press-event", input_control ? G_CALLBACK (popup_window_keypress_mic) : G_CALLBACK (popup_window_keypress_vol), vol);
+
     g_signal_connect (vol->popup_window[index], "destroy", G_CALLBACK (vol_destroyed), vol);
 
     /* Realise the window */
@@ -332,6 +336,66 @@ void popup_window_show_timed (VolumePulsePlugin *vol)
         g_source_remove (vol->popup_timer);
         vol->popup_timer = g_timeout_add (1000, G_SOURCE_FUNC (hide_popup), vol);
     }
+}
+
+static gboolean popup_window_keypress_vol (GtkWidget *, GdkEventKey *event, VolumePulsePlugin *vol)
+{
+    switch (event->keyval)
+    {
+        case GDK_KEY_Escape :
+#ifdef LXPLUG
+                                close_widget (&vol->popup_window[0]);
+#else
+                                close_popup ();
+#endif
+                                return TRUE;
+
+        case GDK_KEY_Up :
+        case GDK_KEY_Down :     volume_key (vol, FALSE, event->keyval == GDK_KEY_Up);
+                                return TRUE;
+
+        default :               return FALSE;
+    }
+}
+
+static gboolean popup_window_keypress_mic (GtkWidget *, GdkEventKey *event, VolumePulsePlugin *vol)
+{
+    switch (event->keyval)
+    {
+        case GDK_KEY_Escape :
+#ifdef LXPLUG
+                                close_widget (&vol->popup_window[1]);
+#else
+                                close_popup ();
+#endif
+                                return TRUE;
+
+        case GDK_KEY_Up :
+        case GDK_KEY_Down :     volume_key (vol, TRUE, event->keyval == GDK_KEY_Up);
+                                return TRUE;
+
+        default :               return FALSE;
+    }
+}
+
+static void volume_key (VolumePulsePlugin *vol, gboolean input, gboolean up)
+{
+    if (pulse_get_mute (vol, input)) return;
+
+    /* Update the PulseAudio volume by a step */
+    int val = pulse_get_volume (vol, input);
+
+    if (up)
+    {
+        if (val < 100) val += 2;
+    }
+    else
+    {
+        if (val > 0) val -= 2;
+    }
+    pulse_set_volume (vol, val, input);
+
+    update_display (vol, input);
 }
 
 /* Handler for "value_changed" signal on popup window vertical scale */
