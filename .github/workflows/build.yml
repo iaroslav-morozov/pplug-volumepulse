@@ -1,0 +1,87 @@
+name: Build Debian Packages
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            platform: linux/arm64
+          - arch: armhf
+            platform: linux/arm/v7
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm,arm64
+
+      - name: Build ${{ matrix.arch }} packages
+        run: |
+          docker run --rm \
+            --platform ${{ matrix.platform }} \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            debian:trixie \
+            bash -c '
+              set -ex
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq
+              apt-get install -y --no-install-recommends \
+                curl ca-certificates gnupg2 devscripts equivs
+
+              # Add Raspberry Pi apt repository
+              curl -fsSL https://archive.raspberrypi.com/debian/raspberrypi.gpg.key \
+                | gpg --dearmor -o /usr/share/keyrings/raspberrypi-archive-keyring.gpg
+              echo "deb [signed-by=/usr/share/keyrings/raspberrypi-archive-keyring.gpg] https://archive.raspberrypi.com/debian/ trixie main" \
+                > /etc/apt/sources.list.d/raspberrypi.list
+              apt-get update -qq
+
+              # Install build dependencies from debian/control
+              mk-build-deps -i -t "apt-get -y --no-install-recommends" /workspace/debian/control
+
+              # Build packages (output .deb files go to parent directory)
+              mkdir /build
+              cp -r /workspace /build/pplug-volumepulse
+              cd /build/pplug-volumepulse
+              dpkg-buildpackage -us -uc -b
+
+              # Copy built packages back to workspace
+              cp /build/*.deb /workspace/
+            '
+
+      - name: Upload ${{ matrix.arch }} packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: debs-${{ matrix.arch }}
+          path: '*.deb'
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.deb
+          generate_release_notes: true
