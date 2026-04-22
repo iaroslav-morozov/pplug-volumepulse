@@ -477,6 +477,9 @@ static void menu_create (VolumePulsePlugin *vol, gboolean input_control)
     // add Bluetooth devices
     bluetooth_add_devices_to_menu (vol, input_control);
 
+    // add network/RAOP sinks (e.g. HomePod/AirPlay) for output menu only
+    if (!input_control) pulse_add_sinks_to_menu (vol);
+
     // update the menu item names, which are currently ALSA device names, to PulseAudio sink/source names
     pulse_update_devices_in_menu (vol, input_control);
 

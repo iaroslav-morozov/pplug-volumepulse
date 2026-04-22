@@ -132,6 +132,8 @@ static void pa_card_check_bt_input_profile (GtkWidget *widget, gpointer data);
 static void pa_cb_add_devices_to_profile_dialog (pa_context *c, const pa_card_info *i, int eol, void *userdata);
 static void pa_cb_count_inputs (pa_context *c, const pa_card_info *i, int eol, void *userdata);
 static void pa_cb_count_outputs (pa_context *c, const pa_card_info *i, int eol, void *userdata);
+static void pa_card_check_network_output (GtkWidget *widget, gpointer data);
+static void pa_cb_get_info_sinks (pa_context *, const pa_sink_info *i, int eol, void *userdata);
 
 /*----------------------------------------------------------------------------*/
 /* Function definitions                                                       */
@@ -962,8 +964,10 @@ static void pa_cb_replace_cards_with_sinks (pa_context *, const pa_sink_info *i,
         const char *api = pa_proplist_gets (i->proplist, "device.api");
         if (!g_strcmp0 (api, "alsa"))
             gtk_container_foreach (GTK_CONTAINER (vol->menu_devices[0]), pa_replace_card_with_sink_on_match, (void *) i);
-        else
+        else if (pa_proplist_gets (i->proplist, "bluez.path"))
             gtk_container_foreach (GTK_CONTAINER (vol->menu_devices[0]), pa_card_check_bt_output_profile, (void *) i);
+        else
+            gtk_container_foreach (GTK_CONTAINER (vol->menu_devices[0]), pa_card_check_network_output, (void *) i);
     }
 
     pa_threaded_mainloop_signal (vol->pa_mainloop, 0);
@@ -999,6 +1003,19 @@ static void pa_card_check_bt_output_profile (GtkWidget *widget, gpointer data)
             gtk_widget_set_sensitive (widget, TRUE);
             gtk_widget_set_tooltip_text (widget, NULL);
         }
+    }
+}
+
+/* Callback for per-menu-item operation which checks to see if a network sink (e.g. RAOP/AirPlay) matches the menu item */
+
+static void pa_card_check_network_output (GtkWidget *widget, gpointer data)
+{
+    pa_sink_info *i = (pa_sink_info *) data;
+
+    if (!g_strcmp0 (i->name, gtk_widget_get_name (widget)))
+    {
+        gtk_widget_set_sensitive (widget, TRUE);
+        gtk_widget_set_tooltip_text (widget, NULL);
     }
 }
 
@@ -1161,6 +1178,45 @@ static void pa_cb_count_outputs (pa_context *, const pa_card_info *i, int eol, v
         {
             const char *nam = pa_proplist_gets (i->proplist, "alsa.card_name");
             if (nam) vol->pa_devices++;
+        }
+    }
+
+    pa_threaded_mainloop_signal (vol->pa_mainloop, 0);
+}
+
+/*----------------------------------------------------------------------------*/
+/* Network/RAOP sink discovery                                                */
+/*----------------------------------------------------------------------------*/
+
+/* Query controller for list of sinks to add non-ALSA, non-Bluetooth entries to menu */
+
+int pulse_add_sinks_to_menu (VolumePulsePlugin *vol)
+{
+    vol->separator = FALSE;
+    DEBUG ("pulse_add_sinks_to_menu");
+    START_PA_OPERATION
+    op = pa_context_get_sink_info_list (vol->pa_cont, &pa_cb_get_info_sinks, vol);
+    END_PA_OPERATION ("get_sink_info_list")
+}
+
+/* Callback for sink list query - adds non-ALSA, non-Bluetooth, non-monitor sinks to the output menu */
+
+static void pa_cb_get_info_sinks (pa_context *, const pa_sink_info *i, int eol, void *userdata)
+{
+    VolumePulsePlugin *vol = (VolumePulsePlugin *) userdata;
+
+    if (!eol && vol->menu_devices[0])
+    {
+        const char *api = pa_proplist_gets (i->proplist, "device.api");
+        const char *btpath = pa_proplist_gets (i->proplist, "bluez.path");
+
+        if (g_strcmp0 (api, "alsa") && !btpath)
+        {
+            const char *desc = pa_proplist_gets (i->proplist, "device.description");
+            const char *label = desc ? desc : i->name;
+            DEBUG ("pa_cb_get_info_sinks %s", i->name);
+            menu_add_separator (vol, vol->menu_devices[0]);
+            menu_add_item (vol, label, i->name, FALSE);
         }
     }
 
