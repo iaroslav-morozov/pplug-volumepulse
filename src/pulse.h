@@ -56,6 +56,7 @@ extern void pulse_update_devices_in_menu (VolumePulsePlugin *vol, gboolean input
 extern int pulse_add_devices_to_profile_dialog (VolumePulsePlugin *vol);
 
 extern int pulse_count_devices (VolumePulsePlugin *vol, gboolean input_control);
+extern int pulse_add_sinks_to_menu (VolumePulsePlugin *vol);
 
 /* End of file */
 /*----------------------------------------------------------------------------*/
