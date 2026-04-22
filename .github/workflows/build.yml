@@ -41,6 +41,9 @@ jobs:
                 curl ca-certificates gnupg2 devscripts equivs
 
               # Add Raspberry Pi apt repository
+              # sqv (sequoia) in trixie rejects SHA1 key-binding signatures used by the Pi
+              # archive key, so force apt to fall back to gpgv which still accepts SHA1.
+              echo "Dir::Bin::sqv \"\";" > /etc/apt/apt.conf.d/99-force-gpgv
               curl -fsSL https://archive.raspberrypi.com/debian/raspberrypi.gpg.key \
                 | gpg --dearmor -o /usr/share/keyrings/raspberrypi-archive-keyring.gpg
               echo "deb [signed-by=/usr/share/keyrings/raspberrypi-archive-keyring.gpg] https://archive.raspberrypi.com/debian/ trixie main" \
